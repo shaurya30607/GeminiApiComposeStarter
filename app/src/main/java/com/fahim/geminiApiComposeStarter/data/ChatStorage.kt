@@ -12,11 +12,11 @@ data class ChatSession(
     val updatedAt: Long = System.currentTimeMillis(),
 )
 
-class ChatStorage(context: Context) {
-    private val prefs = context.getSharedPreferences("gemini_chat_store", Context.MODE_PRIVATE)
+open class ChatStorage(context: Context? = null) {
+    private val prefs = context?.getSharedPreferences("gemini_chat_store", Context.MODE_PRIVATE)
 
-    fun loadSessions(): List<ChatSession> {
-        val jsonString = prefs.getString(KEY_SESSIONS, null)
+    open fun loadSessions(): List<ChatSession> {
+        val jsonString = prefs?.getString(KEY_SESSIONS, null)
         if (jsonString == null) {
             val legacyMessages = loadLegacyHistory()
             return if (legacyMessages.isNotEmpty()) {
@@ -69,7 +69,8 @@ class ChatStorage(context: Context) {
         }
     }
 
-    fun saveSessions(sessions: List<ChatSession>) {
+    open fun saveSessions(sessions: List<ChatSession>) {
+        val p = prefs ?: return
         try {
             val jsonArray = JSONArray()
             for (session in sessions) {
@@ -102,12 +103,12 @@ class ChatStorage(context: Context) {
                 }
                 jsonArray.put(sessionObj)
             }
-            prefs.edit().putString(KEY_SESSIONS, jsonArray.toString()).apply()
+            p.edit().putString(KEY_SESSIONS, jsonArray.toString()).apply()
         } catch (_: Exception) {}
     }
 
     private fun loadLegacyHistory(): List<ChatMessage> {
-        val jsonString = prefs.getString("key_chat_history", null) ?: return emptyList()
+        val jsonString = prefs?.getString("key_chat_history", null) ?: return emptyList()
         return try {
             val jsonArray = JSONArray(jsonString)
             val messages = mutableListOf<ChatMessage>()
@@ -126,20 +127,20 @@ class ChatStorage(context: Context) {
         }
     }
 
-    fun loadSelectedModel(default: String = "gemini-3.8-flash"): String {
-        return prefs.getString(KEY_SELECTED_MODEL, default) ?: default
+    open fun loadSelectedModel(default: String = "gemini-3.8-flash"): String {
+        return prefs?.getString(KEY_SELECTED_MODEL, default) ?: default
     }
 
-    fun saveSelectedModel(model: String) {
-        prefs.edit().putString(KEY_SELECTED_MODEL, model).apply()
+    open fun saveSelectedModel(model: String) {
+        prefs?.edit()?.putString(KEY_SELECTED_MODEL, model)?.apply()
     }
 
-    fun loadActiveSessionId(): String? {
-        return prefs.getString(KEY_ACTIVE_SESSION_ID, null)
+    open fun loadActiveSessionId(): String? {
+        return prefs?.getString(KEY_ACTIVE_SESSION_ID, null)
     }
 
-    fun saveActiveSessionId(id: String) {
-        prefs.edit().putString(KEY_ACTIVE_SESSION_ID, id).apply()
+    open fun saveActiveSessionId(id: String) {
+        prefs?.edit()?.putString(KEY_ACTIVE_SESSION_ID, id)?.apply()
     }
 
     companion object {

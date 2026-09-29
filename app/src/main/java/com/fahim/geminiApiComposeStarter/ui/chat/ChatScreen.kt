@@ -8,6 +8,13 @@ import android.speech.RecognizerIntent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -82,13 +89,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -236,7 +250,7 @@ fun ChatScreen(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                modifier = Modifier.width(300.dp),
+                modifier = Modifier.width(305.dp),
             ) {
                 Column(
                     modifier = Modifier
@@ -248,15 +262,18 @@ fun ChatScreen(
                         modifier = Modifier.padding(bottom = 16.dp),
                     ) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_assistant),
+                            painter = painterResource(R.drawable.ic_gemini_logo),
                             contentDescription = null,
                             modifier = Modifier.size(28.dp),
                             tint = MaterialTheme.colorScheme.primary,
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "Gemini Chats",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            text = "Gemini Composer",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.SansSerif,
+                            ),
                         )
                     }
 
@@ -276,7 +293,7 @@ fun ChatScreen(
                             modifier = Modifier.size(18.dp),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("New Chat")
+                        Text("New Chat", fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Medium)
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -304,6 +321,7 @@ fun ChatScreen(
                                         overflow = TextOverflow.Ellipsis,
                                         style = MaterialTheme.typography.bodyMedium.copy(
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            fontFamily = FontFamily.SansSerif,
                                         ),
                                     )
                                 },
@@ -334,6 +352,13 @@ fun ChatScreen(
                             )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Colorful Animated Google Gemini Button
+                    GeminiExploreButton(
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         },
@@ -345,7 +370,10 @@ fun ChatScreen(
                     title = {
                         Text(
                             text = "Gemini",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.SansSerif,
+                            ),
                         )
                     },
                     navigationIcon = {
@@ -427,7 +455,7 @@ fun ChatScreen(
                             verticalArrangement = Arrangement.Center,
                         ) {
                             Icon(
-                                painter = painterResource(R.drawable.ic_assistant),
+                                painter = painterResource(R.drawable.ic_gemini_logo),
                                 contentDescription = null,
                                 modifier = Modifier.size(56.dp),
                                 tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
@@ -435,7 +463,10 @@ fun ChatScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 text = "How can I help you today?",
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontFamily = FontFamily.SansSerif,
+                                    fontWeight = FontWeight.Medium,
+                                ),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
@@ -492,6 +523,96 @@ fun ChatScreen(
     }
 }
 
+/** Launches the Google Gemini app, or redirects to Google Play Store if not installed */
+private fun openGeminiApp(context: android.content.Context) {
+    val packageName = "com.google.android.apps.bard"
+    val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
+    if (launchIntent != null) {
+        context.startActivity(launchIntent)
+    } else {
+        try {
+            val marketIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName")).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(marketIntent)
+        } catch (_: Exception) {
+            val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName")).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(webIntent)
+        }
+    }
+}
+
+/** Animated colorful border button with thicker 3.5dp border and seamless repeated animation */
+@Composable
+private fun GeminiExploreButton(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val infiniteTransition = rememberInfiniteTransition(label = "gemini_border_anim")
+    val gradientSpan = 800f
+    val offset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = gradientSpan,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 3500, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "border_offset",
+    )
+
+    // Google Gemini 4-color emblem palette seamlessly repeated
+    val geminiColors = listOf(
+        Color(0xFFEA4335), // Red
+        Color(0xFF4285F4), // Blue
+        Color(0xFF34A853), // Green
+        Color(0xFFFBBC04), // Yellow / Amber
+        Color(0xFFEA4335), // Loop Red
+    )
+
+    val animatedBorderBrush = Brush.linearGradient(
+        colors = geminiColors,
+        start = Offset(offset, 0f),
+        end = Offset(offset + gradientSpan, gradientSpan * 0.35f),
+        tileMode = TileMode.Repeated,
+    )
+
+    Surface(
+        onClick = { openGeminiApp(context) },
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(width = 3.5.dp, brush = animatedBorderBrush),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 13.dp),
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_gemini_logo),
+                contentDescription = null,
+                tint = Color.Unspecified,
+                modifier = Modifier.size(22.dp),
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "Open Gemini",
+                style = TextStyle(
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    letterSpacing = 0.2.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
+            )
+        }
+    }
+}
+
 @Composable
 private fun AttachmentChip(
     attachment: ChatAttachment,
@@ -521,7 +642,7 @@ private fun AttachmentChip(
             }
             Text(
                 text = attachment.name,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.SansSerif),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.widthIn(max = 110.dp),
@@ -603,7 +724,7 @@ private fun ChatMessageBubble(message: ChatMessage) {
                                             Spacer(modifier = Modifier.width(4.dp))
                                             Text(
                                                 text = att.name,
-                                                style = MaterialTheme.typography.labelSmall,
+                                                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.SansSerif),
                                                 color = MaterialTheme.colorScheme.onPrimary,
                                                 maxLines = 1,
                                             )
@@ -616,7 +737,7 @@ private fun ChatMessageBubble(message: ChatMessage) {
                     if (message.text.isNotBlank() && message.text != "Analyze this attachment") {
                         Text(
                             text = message.text,
-                            style = MaterialTheme.typography.bodyLarge,
+                            style = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.SansSerif),
                         )
                     }
                 }
@@ -628,10 +749,10 @@ private fun ChatMessageBubble(message: ChatMessage) {
             horizontalArrangement = Arrangement.Start,
         ) {
             Icon(
-                painter = painterResource(R.drawable.ic_assistant),
+                painter = painterResource(R.drawable.ic_gemini_logo),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(30.dp)
+                    .size(28.dp)
                     .padding(top = 4.dp, end = 6.dp),
                 tint = MaterialTheme.colorScheme.primary,
             )
@@ -669,7 +790,10 @@ private fun AttachmentBottomSheet(
         ) {
             Text(
                 text = "Add Attachments",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.SansSerif,
+                ),
                 modifier = Modifier.padding(bottom = 16.dp),
             )
 
@@ -688,7 +812,7 @@ private fun AttachmentBottomSheet(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
-                    Text(text = "Take Photo", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium))
+                    Text(text = "Take Photo", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium, fontFamily = FontFamily.SansSerif))
                     Text(text = "Capture an image with your camera", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -708,7 +832,7 @@ private fun AttachmentBottomSheet(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
-                    Text(text = "Upload Photos", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium))
+                    Text(text = "Upload Photos", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium, fontFamily = FontFamily.SansSerif))
                     Text(text = "Choose one or multiple photos from gallery", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -728,7 +852,7 @@ private fun AttachmentBottomSheet(
                 )
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
-                    Text(text = "Upload Files", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium))
+                    Text(text = "Upload Files", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium, fontFamily = FontFamily.SansSerif))
                     Text(text = "Select documents, text, code, or other files", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -746,10 +870,10 @@ private fun LoadingAssistantBubble() {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            painter = painterResource(R.drawable.ic_assistant),
+            painter = painterResource(R.drawable.ic_gemini_logo),
             contentDescription = null,
             modifier = Modifier
-                .size(30.dp)
+                .size(28.dp)
                 .padding(end = 6.dp),
             tint = MaterialTheme.colorScheme.primary,
         )
@@ -770,7 +894,7 @@ private fun LoadingAssistantBubble() {
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Thinking...",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.SansSerif),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -797,12 +921,12 @@ private fun ModelSelectionDialog(
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    painter = painterResource(R.drawable.ic_assistant),
+                    painter = painterResource(R.drawable.ic_gemini_logo),
                     contentDescription = null,
                     modifier = Modifier.size(24.dp).padding(end = 8.dp),
                     tint = MaterialTheme.colorScheme.primary,
                 )
-                Text(text = "Select Model", style = MaterialTheme.typography.titleLarge)
+                Text(text = "Select Model", style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold))
             }
         },
         text = {
@@ -837,6 +961,7 @@ private fun ModelSelectionDialog(
                                 text = model.displayName,
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     fontWeight = if (isChecked) FontWeight.Bold else FontWeight.Normal,
+                                    fontFamily = FontFamily.SansSerif,
                                 ),
                             )
                             Text(
@@ -868,6 +993,7 @@ private fun ModelSelectionDialog(
                             text = "Custom Model",
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontWeight = if (isCustom) FontWeight.Bold else FontWeight.Normal,
+                                fontFamily = FontFamily.SansSerif,
                             ),
                         )
                         if (isCustom) {
@@ -893,12 +1019,12 @@ private fun ModelSelectionDialog(
                     }
                 },
             ) {
-                Text("Apply")
+                Text("Apply", fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", fontFamily = FontFamily.SansSerif)
             }
         },
     )
@@ -953,7 +1079,7 @@ private fun PromptBar(
             value = prompt,
             onValueChange = onPromptChange,
             modifier = Modifier.weight(1f).padding(end = 8.dp),
-            placeholder = { Text("Message Gemini...") },
+            placeholder = { Text("Message Gemini...", fontFamily = FontFamily.SansSerif) },
             minLines = 1,
             maxLines = 4,
             shape = RoundedCornerShape(24.dp),

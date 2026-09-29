@@ -13,16 +13,23 @@ private const val TAG = "GeminiRepository"
 const val DEFAULT_MODEL = "gemini-3.8-flash"
 
 class GeminiRepositoryImpl(
-    private val apiKey: String,
+    private val apiKeyProvider: () -> String,
     private val defaultModelName: String = DEFAULT_MODEL,
 ) : GeminiRepository {
+
+    constructor(apiKey: String, defaultModelName: String = DEFAULT_MODEL) : this(
+        apiKeyProvider = { apiKey },
+        defaultModelName = defaultModelName
+    )
 
     private val modelsCache = mutableMapOf<String, GenerativeModel>()
 
     private fun getModel(modelName: String): GenerativeModel = synchronized(modelsCache) {
         val target = modelName.trim().ifEmpty { defaultModelName }
         modelsCache.getOrPut(target) {
-            GenerativeModel(modelName = target, apiKey = apiKey)
+            // Decrypts/retrieves in memory only at the moment GenerativeModel is created
+            val activeKey = apiKeyProvider()
+            GenerativeModel(modelName = target, apiKey = activeKey)
         }
     }
 
