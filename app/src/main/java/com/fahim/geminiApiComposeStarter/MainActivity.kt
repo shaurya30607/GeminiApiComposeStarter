@@ -5,17 +5,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import com.fahim.geminiApiComposeStarter.BuildConfig
+import com.fahim.geminiApiComposeStarter.data.ChatStorage
 import com.fahim.geminiApiComposeStarter.data.GeminiRepositoryImpl
 import com.fahim.geminiApiComposeStarter.ui.chat.ChatRoute
 import com.fahim.geminiApiComposeStarter.ui.chat.ChatViewModel
 import com.fahim.geminiApiComposeStarter.ui.theme.GeminiApiComposeStarterTheme
-import com.google.ai.client.generativeai.BuildConfig
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: ChatViewModel by viewModels {
         ChatViewModel.factory(
+            application = application,
             repository = GeminiRepositoryImpl(apiKey = BuildConfig.GEMINI_API_KEY),
+            storage = ChatStorage(applicationContext),
             hasApiKey = BuildConfig.GEMINI_API_KEY.isNotBlank(),
         )
     }
